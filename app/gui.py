@@ -22,6 +22,11 @@ class ModManagerApp(tk.Tk):
         self.title("Sims 4 Mod Manager")
         self.geometry("1200x760")
         self.minsize(900, 620)
+        self._restore_or_maximize()
+        self.bind("<Configure>", self._save_geometry)
+        self.resizable(True, True)
+        # Prevent window from snapping to minsize after dialogs
+        self.bind("<FocusIn>", lambda e: self._restore_geometry())
         self.configure(bg=COLORS["bg"])
 
         self._apply_theme()
@@ -113,9 +118,48 @@ class ModManagerApp(tk.Tk):
             self.active_label.config(text=f"▶  Active: {active}", fg=COLORS["accent"])
         else:
             self.active_label.config(text="No profile active", fg=COLORS["muted"])
+    
+    def _restore_or_maximize(self):
+        """On first launch: maximize. After that: restore saved size/position."""
+        prefs_file = self.manager.data_dir / "window.json"
+        if prefs_file.exists():
+            try:
+                import json
+                prefs = json.loads(prefs_file.read_text())
+                if prefs.get("maximized"):
+                    self.state("zoomed")
+                else:
+                    self.geometry(prefs["geometry"])
+                return
+            except Exception:
+                pass
+        # First launch — maximize
+        self.state("zoomed")
+
+    def _save_geometry(self, e=None):
+        """Save window size/position whenever it changes."""
+        import json
+        # Only save if the event is for the root window itself
+        if e and e.widget is not self:
+            return
+        try:
+            prefs_file = self.manager.data_dir / "window.json"
+            maximized = self.state() == "zoomed"
+            prefs = {
+                "maximized": maximized,
+                "geometry": self.geometry() if not maximized else "1200x760",
+            }
+            prefs_file.write_text(json.dumps(prefs))
+        except Exception:
+            pass
 
     def set_status(self, msg: str, color: str = None):
         self.status.set(msg, color or COLORS["fg"])
 
     def refresh(self):
         self._refresh_all()
+    
+    def _restore_geometry(self):
+        # If window shrank below intended size, restore it
+        if self.winfo_width() < 900 or self.winfo_height() < 620:
+            self.geometry("1200x760")
