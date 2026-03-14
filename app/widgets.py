@@ -146,13 +146,31 @@ class ProfilePanel(tk.Frame):
         self.profile_lb.bind("<<ListboxSelect>>", self._on_select)
  
         # Profile action buttons
-        btn_frame = tk.Frame(left, bg=COLORS["bg"])
-        btn_frame.pack(fill="x", pady=8)
-        StyledButton(btn_frame, "+ New", self._new_profile, "primary").pack(side="left", padx=(0, 4))
-        StyledButton(btn_frame, "Import", self._import_profile, "ghost").pack(side="left", padx=(0, 4))
-        StyledButton(btn_frame, "Rename", self._rename_profile, "ghost").pack(side="left", padx=(0, 4))
-        StyledButton(btn_frame, "Delete", self._delete_profile, "danger").pack(side="right")
- 
+        def icon_btn(parent, icon, tip, cmd, hover_color):
+            btn = tk.Button(parent, text=icon, command=cmd,
+                            bg=COLORS["surface2"], fg=COLORS["muted"],
+                            activebackground=hover_color, activeforeground="#fff",
+                            relief="flat", cursor="hand2",
+                            font=("Segoe UI Emoji", 14), width=2, bd=0)
+            btn.pack(side="left", padx=2)
+            tip_label = tk.Label(parent, text=tip, bg=COLORS["surface"],
+                                fg=COLORS["fg"], font=FONTS["small"],
+                                padx=6, pady=3, relief="flat")
+            def show(e):
+                btn.config(bg=hover_color, fg="#fff")
+                tip_label.place(in_=btn, x=0, y=-28)
+            def hide(e):
+                btn.config(bg=COLORS["surface2"], fg=COLORS["muted"])
+                tip_label.place_forget()
+            btn.bind("<Enter>", show)
+            btn.bind("<Leave>", hide)
+            return btn
+
+        icon_btn(btn_frame, "\u002B", "New profile",    self._new_profile,    "#86efac")        # Icon: +   
+        icon_btn(btn_frame, "\u2191", "Import profile",  self._import_profile, "#93c5fd")       # Icon: ↑
+        icon_btn(btn_frame, "\u270E", "Rename profile",  self._rename_profile, "#d8b4fe")       # Icon: ✎
+        icon_btn(btn_frame, "\u2715", "Delete profile",  self._delete_profile, "#f87171")       # Icon: ✕
+        
         # Right side
         right = tk.Frame(self, bg=COLORS["bg"])
         right.pack(side="left", fill="both", expand=True, padx=20, pady=20)
