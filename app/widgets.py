@@ -32,11 +32,11 @@ FONTS = {
 }
  
 NAV_ITEMS = [
-    ("profiles",   "⊞  Profiles"),
-    ("library",    "⊟  Mod Library"),
-    ("duplicates", "⊜  Duplicates"),
-    ("configs",    "⚙  Mod Configs"),
-    ("settings",   "◈  Settings"),
+    ("profiles",   "\u229e  Profiles"),      # Icon: ⊞
+    ("library",    "\u229f  Mod Library"),   # Icon: ⊟
+    ("duplicates", "\u229c  Duplicates"),    # Icon: ⊜
+    ("configs",    "\u2699  Mod Configs"),   # Icon: ⚙
+    ("settings",   "\u25c8  Settings"),      # Icon: ◈
 ]
  
  
@@ -145,13 +145,39 @@ class ProfilePanel(tk.Frame):
         self.profile_lb.pack(fill="both", expand=True, padx=4, pady=4)
         self.profile_lb.bind("<<ListboxSelect>>", self._on_select)
  
-        # Profile action buttons
+        # Profile action buttons 
         btn_frame = tk.Frame(left, bg=COLORS["bg"])
         btn_frame.pack(fill="x", pady=8)
-        StyledButton(btn_frame, "+ New", self._new_profile, "primary").pack(side="left", padx=(0, 4))
-        StyledButton(btn_frame, "Import", self._import_profile, "ghost").pack(side="left", padx=(0, 4))
-        StyledButton(btn_frame, "Delete", self._delete_profile, "danger").pack(side="right")
- 
+        def icon_btn(parent, icon, tip, cmd, hover_color):
+            btn = tk.Button(parent, text=icon, command=cmd,
+                            bg=COLORS["surface2"], fg=COLORS["muted"],
+                            activebackground=hover_color, activeforeground="#fff",
+                            relief="flat", cursor="hand2",
+                            font=("Segoe UI Emoji", 13), width=3, height=1,
+                            padx=0, pady=4, bd=0)
+            btn.pack(side="left", padx=1, fill="x", expand=True)
+            tip_label = tk.Label(self, text=tip, bg=COLORS["accent"],
+                                fg="#1a1520", font=FONTS["small"],
+                                 padx=8, pady=4, relief="flat")
+            def show(e):
+                btn.config(bg=hover_color, fg="#fff")
+                # Place tooltip above the button, relative to the panels
+                x = btn.winfo_x() + btn_frame.winfo_x() + left.winfo_x()
+                y = btn.winfo_y() + btn_frame.winfo_y() + left.winfo_y() - 30
+                tip_label.place(x=x, y=y)
+                tip_label.lift()
+            def hide(e):
+                btn.config(bg=COLORS["surface2"], fg=COLORS["muted"])
+                tip_label.place_forget()
+            btn.bind("<Enter>", show)
+            btn.bind("<Leave>", hide)
+            return btn
+
+        icon_btn(btn_frame, "\u002B", "New profile",    self._new_profile,    "#86efac")  # Icon: +
+        icon_btn(btn_frame, "\u2191", "Import profile", self._import_profile, "#93c5fd")  # Icon: ↑
+        icon_btn(btn_frame, "\u270E", "Rename profile", self._rename_profile, "#d8b4fe")  # Icon: ✎
+        icon_btn(btn_frame, "\u2715", "Delete profile", self._delete_profile, "#f87171")  # Icon: ✕
+        
         # Right side
         right = tk.Frame(self, bg=COLORS["bg"])
         right.pack(side="left", fill="both", expand=True, padx=20, pady=20)
@@ -185,7 +211,7 @@ class ProfilePanel(tk.Frame):
  
         is_active = self.manager.settings.active_profile == profile_name
         if is_active:
-            tk.Label(header, text=" ▶ ACTIVE", bg=COLORS["bg"],
+            tk.Label(header, text=" \u25b6 ACTIVE", bg=COLORS["bg"],  # Icon: ▶
                      fg=COLORS["positive"], font=FONTS["small"]).pack(side="left", padx=6)
  
         # Description
@@ -199,17 +225,15 @@ class ProfilePanel(tk.Frame):
         self._desc_var.trace_add("write", lambda *_: self._save_desc(profile_name))
  
         # Mod count
-        tk.Label(self.detail_frame,
-                 text=f"{len(p.enabled_mods)} mods enabled",
+        tk.Label(self.detail_frame, text=f"{len(p.enabled_mods)} mods enabled",
                  bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"]).pack(anchor="w")
  
-        # Mod list with remove button
+        # Mod list
         mod_frame = tk.Frame(self.detail_frame, bg=COLORS["surface"])
         mod_frame.pack(fill="both", expand=True, pady=8)
  
         cols = ("mod",)
-        self.mod_tree = ttk.Treeview(mod_frame, columns=cols, show="headings",
-                                     selectmode="extended")
+        self.mod_tree = ttk.Treeview(mod_frame, columns=cols, show="headings", selectmode="extended")
         self.mod_tree.heading("mod", text="Enabled Mods")
         self.mod_tree.column("mod", width=400)
         scroll = ttk.Scrollbar(mod_frame, orient="vertical", command=self.mod_tree.yview)
@@ -218,26 +242,25 @@ class ProfilePanel(tk.Frame):
         self.mod_tree.pack(fill="both", expand=True)
  
         for mod in sorted(p.enabled_mods):
-            in_lib = mod in self.manager.library
-            tag = "ok" if in_lib else "missing"
+            tag = "ok" if mod in self.manager.library else "missing"
             self.mod_tree.insert("", "end", values=(mod,), tags=(tag,))
  
         self.mod_tree.tag_configure("missing", foreground=COLORS["danger"])
  
-        # Buttons
+        # Action buttons
         act_frame = tk.Frame(self.detail_frame, bg=COLORS["bg"])
         act_frame.pack(fill="x", pady=8)
  
         if not is_active:
-            StyledButton(act_frame, "▶  Activate Profile",
+           StyledButton(act_frame, "\u25b6  Activate Profile",  # Icon: ▶
                          lambda: self._activate(profile_name), "success").pack(side="left", padx=(0, 6))
         else:
-            StyledButton(act_frame, "⏹  Deactivate",
+            StyledButton(act_frame, "\u23f9  Deactivate",        # Icon: ⏹
                          self._deactivate, "ghost").pack(side="left", padx=(0, 6))
  
-        StyledButton(act_frame, "Export…",
+        StyledButton(act_frame, "Export...",
                      lambda: self._export(profile_name), "ghost").pack(side="left", padx=(0, 6))
-        StyledButton(act_frame, "Edit Mods…",
+        StyledButton(act_frame, "Edit Mods...",
                      lambda: self._open_mod_editor(profile_name), "ghost").pack(side="left")
         StyledButton(act_frame, "Remove Selected",
                      lambda: self._remove_mods(profile_name), "danger").pack(side="right")
@@ -252,8 +275,7 @@ class ProfilePanel(tk.Frame):
         sel = self.profile_lb.curselection()
         if not sel:
             return
-        name = self.profile_lb.get(sel[0])
-        self._show_detail(name)
+        self._show_detail(self.profile_lb.get(sel[0]))
  
     def _new_profile(self):
         name = simpledialog.askstring("New Profile", "Profile name:", parent=self)
@@ -269,10 +291,46 @@ class ProfilePanel(tk.Frame):
         # Select the new profile
         items = list(self.profile_lb.get(0, "end"))
         if name in items:
-            idx = items.index(name)
-            self.profile_lb.selection_set(idx)
+            self.profile_lb.selection_set(items.index(name))
             self._show_detail(name)
         self.app.set_status(f"Created profile '{name}'")
+        
+    def _rename_profile(self):
+        sel = self.profile_lb.curselection()
+        if not sel:
+            return
+        old_name = self.profile_lb.get(sel[0])
+        new_name = simpledialog.askstring("Rename Profile", "New name:",
+                                          initialvalue=old_name, parent=self)
+        if not new_name or new_name == old_name:
+            return
+        if new_name in self.manager.profiles:
+            messagebox.showerror("Error", f"A profile named '{new_name}' already exists.")
+            return
+        # Update the profile object
+        import re
+        profile = self.manager.profiles[old_name]
+        profile.name = new_name
+        # Remove old file, save under new name
+        import re
+        old_safe = re.sub(r'[^\w\-]', '_', old_name)
+        old_path = self.manager.profiles_dir / f"{old_safe}.json"
+        if old_path.exists():
+            old_path.unlink()
+        del self.manager.profiles[old_name]
+        self.manager.profiles[new_name] = profile
+        self.manager.save_profile(profile)
+        # Update active profile name if it was the renamed one
+        if self.manager.settings.active_profile == old_name:
+            self.manager.settings.active_profile = new_name
+            self.manager.save_settings()
+        self.refresh()
+        # Re-select the renamed profile
+        items = list(self.profile_lb.get(0, "end"))
+        if new_name in items:
+            self.profile_lb.selection_set(items.index(new_name))
+        self._show_detail(new_name)
+        self.app.set_status(f"Renamed '{old_name}' to '{new_name}'")
  
     def _delete_profile(self):
         sel = self.profile_lb.curselection()
@@ -301,7 +359,7 @@ class ProfilePanel(tk.Frame):
             except Exception as ex:
                 self.after(0, lambda e=ex: messagebox.showerror("Error", str(e)))
  
-        self.app.set_status("Activating profile…")
+        self.app.set_status("Activating profile...")
         threading.Thread(target=do, daemon=True).start()
  
     def _deactivate(self):
@@ -314,8 +372,7 @@ class ProfilePanel(tk.Frame):
  
     def _export(self, name: str):
         path = filedialog.asksaveasfilename(
-            title="Export Profile",
-            defaultextension=".json",
+            title="Export Profile", defaultextension=".json",
             filetypes=[("Profile JSON", "*.json")],
             initialfile=f"{name}_profile.json",
         )
@@ -336,7 +393,7 @@ class ProfilePanel(tk.Frame):
             if missing:
                 msg += f"\n{len(missing)} mods not in your library:\n" + "\n".join(missing[:10])
                 if len(missing) > 10:
-                    msg += f"\n…and {len(missing)-10} more."
+                    msg += f"\n...and {len(missing)-10} more."
                 messagebox.showwarning("Import complete (with missing mods)", msg)
             else:
                 messagebox.showinfo("Import complete", msg)
@@ -366,14 +423,10 @@ class ProfilePanel(tk.Frame):
  
         self.profile_lb.delete(0, "end")
         for name in sorted(self.manager.profiles.keys()):
-            display = name
-            if name == self.manager.settings.active_profile:
-                display = f"▶ {name}"
             self.profile_lb.insert("end", name)
-            # Highlight active
+            # Highlight active profile in green
             if name == self.manager.settings.active_profile:
-                idx = self.profile_lb.size() - 1
-                self.profile_lb.itemconfig(idx, fg=COLORS["positive"])
+                self.profile_lb.itemconfig(self.profile_lb.size() - 1, fg=COLORS["positive"])
  
         if sel_name and sel_name in self.manager.profiles:
             items = list(self.profile_lb.get(0, "end"))
@@ -390,7 +443,7 @@ class ModEditorDialog(tk.Toplevel):
         self.manager = manager
         self.profile_name = profile_name
         self.app = app
-        self.title(f"Edit Mods — {profile_name}")
+        self.title(f"Edit Mods \u2014 {profile_name}")
         self.geometry("900x600")
         self.configure(bg=COLORS["bg"])
         self.grab_set()
@@ -406,10 +459,9 @@ class ModEditorDialog(tk.Toplevel):
         tk.Label(top, text="Search library:", bg=COLORS["bg"],
                  fg=COLORS["muted"], font=FONTS["small"]).pack(side="left")
         self._search_var = tk.StringVar()
-        entry = ttk.Entry(top, textvariable=self._search_var, width=30)
-        entry.pack(side="left", padx=8)
+        ttk.Entry(top, textvariable=self._search_var, width=30).pack(side="left", padx=8)
         self._search_var.trace_add("write", lambda *_: self._filter())
-        StyledButton(top, "Add Selected →", self._add_selected, "primary").pack(side="right")
+        StyledButton(top, "Add Selected \u2192", self._add_selected, "primary").pack(side="right")  # Icon: →
         StyledButton(top, "Add All Visible", self._add_all_visible, "ghost").pack(side="right", padx=6)
  
         panes = tk.Frame(self, bg=COLORS["bg"])
@@ -420,8 +472,7 @@ class ModEditorDialog(tk.Toplevel):
         left.pack(side="left", fill="both", expand=True, padx=(0, 8))
         tk.Label(left, text="All Library Mods", bg=COLORS["surface"],
                  fg=COLORS["accent"], font=FONTS["heading"], anchor="w", padx=8, pady=6).pack(fill="x")
-        self.lib_tree = ttk.Treeview(left, columns=("mod",), show="headings",
-                                     selectmode="extended")
+        self.lib_tree = ttk.Treeview(left, columns=("mod",), show="headings", selectmode="extended")
         self.lib_tree.heading("mod", text="Filename")
         sc = ttk.Scrollbar(left, orient="vertical", command=self.lib_tree.yview)
         self.lib_tree.configure(yscrollcommand=sc.set)
@@ -434,16 +485,14 @@ class ModEditorDialog(tk.Toplevel):
         right.pack(side="left", fill="both", expand=True)
         tk.Label(right, text="Enabled in Profile", bg=COLORS["surface"],
                  fg=COLORS["accent"], font=FONTS["heading"], anchor="w", padx=8, pady=6).pack(fill="x")
-        self.enabled_tree = ttk.Treeview(right, columns=("mod",), show="headings",
-                                         selectmode="extended")
+        self.enabled_tree = ttk.Treeview(right, columns=("mod",), show="headings", selectmode="extended")
         self.enabled_tree.heading("mod", text="Filename")
         sc2 = ttk.Scrollbar(right, orient="vertical", command=self.enabled_tree.yview)
         self.enabled_tree.configure(yscrollcommand=sc2.set)
         sc2.pack(side="right", fill="y")
         self.enabled_tree.pack(fill="both", expand=True)
  
-        StyledButton(right, "← Remove Selected",
-                     self._remove_selected, "danger").pack(pady=6)
+        StyledButton(right, "\u2190 Remove Selected", self._remove_selected, "danger").pack(pady=6)
  
         self._all_mods = sorted(self.manager.library.keys())
         self._enabled_set = enabled_set
@@ -458,7 +507,7 @@ class ModEditorDialog(tk.Toplevel):
     def _populate_lib(self, mods):
         self.lib_tree.delete(*self.lib_tree.get_children())
         for m in mods:
-            already = "✓ " if m in self._enabled_set else ""
+            already = "\u2713 " if m in self._enabled_set else ""  # Icon: ✓
             self.lib_tree.insert("", "end", iid=m, values=(f"{already}{m}",),
                                  tags=("enabled" if m in self._enabled_set else "",))
         self.lib_tree.tag_configure("enabled", foreground=COLORS["muted"])
@@ -470,12 +519,10 @@ class ModEditorDialog(tk.Toplevel):
  
     def _filter(self):
         q = self._search_var.get().lower()
-        filtered = [m for m in self._all_mods if q in m.lower()]
-        self._populate_lib(filtered)
+        self._populate_lib([m for m in self._all_mods if q in m.lower()])
  
     def _add_selected(self):
-        sel = self.lib_tree.selection()
-        for iid in sel:
+        for iid in self.lib_tree.selection():
             self._enabled_set.add(iid)
         self._populate_enabled()
         self._filter()
@@ -487,8 +534,7 @@ class ModEditorDialog(tk.Toplevel):
         self._filter()
  
     def _remove_selected(self):
-        sel = self.enabled_tree.selection()
-        for iid in sel:
+        for iid in self.enabled_tree.selection():
             self._enabled_set.discard(iid)
         self._populate_enabled()
         self._filter()
@@ -517,13 +563,13 @@ class ModLibraryPanel(tk.Frame):
  
         btn_row = tk.Frame(top, bg=COLORS["bg"])
         btn_row.pack(side="right")
-        StyledButton(btn_row, "↻ Scan Library", self._scan, "primary").pack(side="left", padx=4)
+        StyledButton(btn_row, "\u21bb Scan Library", self._scan, "primary").pack(side="left", padx=4)       # Icon: ↻
         StyledButton(btn_row, "+ Import Folder", self._import_folder, "ghost").pack(side="left", padx=4)
  
         # Search
         search_row = tk.Frame(self, bg=COLORS["bg"])
         search_row.pack(fill="x", padx=20, pady=(0, 8))
-        tk.Label(search_row, text="🔍", bg=COLORS["bg"], fg=COLORS["muted"]).pack(side="left")
+        tk.Label(search_row, text="\U0001f50d", bg=COLORS["bg"], fg=COLORS["muted"]).pack(side="left")  # Icon: 🔍
         self._search_var = tk.StringVar()
         ttk.Entry(search_row, textvariable=self._search_var, width=40).pack(side="left", padx=6)
         self._search_var.trace_add("write", lambda *_: self._filter())
@@ -552,7 +598,7 @@ class ModLibraryPanel(tk.Frame):
  
     def _scan(self):
         def do():
-            self.app.set_status("Scanning library…")
+            self.app.set_status("Scanning library...")
             stats = self.manager.scan_master_library()
             msg = (f"Scan complete: {stats['total']} mods total, "
                    f"{stats['new']} new, {stats['removed']} removed, "
@@ -585,7 +631,7 @@ class ModLibraryPanel(tk.Frame):
             tags = ", ".join(entry.tags) if entry.tags else ""
             self.tree.insert("", "end", values=(rel, size, tags))
         count = len(self.tree.get_children())
-        self._stats_label.config(text=f"{count} mods shown  ·  {len(self.manager.library)} total in library")
+        self._stats_label.config(text=f"{count} mods shown  \u00b7  {len(self.manager.library)} total in library")
  
     def _fmt_size(self, b: int) -> str:
         if b < 1024:
@@ -612,7 +658,7 @@ class DuplicatesPanel(tk.Frame):
         top = tk.Frame(self, bg=COLORS["bg"])
         top.pack(fill="x", padx=20, pady=(16, 8))
         SectionHeader(top, "Duplicate Mods").pack(side="left")
-        StyledButton(top, "↻ Check Duplicates", self._check, "primary").pack(side="right")
+        StyledButton(top, "\u21bb Check Duplicates", self._check, "primary").pack(side="right")  # Icon: ↻
  
         info = tk.Label(self, text="Duplicate detection compares file contents by hash — not just filenames.",
                         bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
@@ -621,8 +667,10 @@ class DuplicatesPanel(tk.Frame):
         # Pack buttons and label BEFORE tree so they're never pushed off screen
         btn_row = tk.Frame(self, bg=COLORS["bg"])
         btn_row.pack(fill="x", padx=20, pady=(0, 4), side="bottom")
-        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", lambda: self._recycle_selected(), "danger").pack(side="left")
-        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", lambda: self._recycle_all_dupes(), "danger").pack(side="left", padx=8)
+        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin",
+                     lambda: self._recycle_selected(), "danger").pack(side="left")
+        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin",
+                     lambda: self._recycle_all_dupes(), "danger").pack(side="left", padx=8)
         
         self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
                                       bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
@@ -680,75 +728,76 @@ class DuplicatesPanel(tk.Frame):
             trash = Path.home() / ".local/share/Trash/files"
             trash.mkdir(parents=True, exist_ok=True)
             shutil.move(str(path), trash / Path(path).name)
+
  
-        def _recycle_selected(self):
-            sel = self.tree.selection()
-            if not sel:
-                messagebox.showinfo("Nothing selected", "Click a duplicate file row to select it first.")
+    def _recycle_selected(self):
+        sel = self.tree.selection()
+        if not sel:
+            messagebox.showinfo("Nothing selected", "Click a duplicate file row to select it first.")
+            return
+        iid = sel[0]
+        if not self.tree.parent(iid):
+            messagebox.showinfo("Select a file", "Select an individual file row, not a group header.")
+            return
+        path_str = self.tree.item(iid)["values"][0]
+        note = str(self.tree.item(iid)["values"][1])
+        if "keep" in note:
+            if not messagebox.askyesno("Delete original?",
+                    f"'{path_str}' is marked as the original to keep.\nSend it to the Recycle Bin anyway?"):
                 return
-            iid = sel[0]
-            if not self.tree.parent(iid):
-                messagebox.showinfo("Select a file", "Select an individual file row, not a group header.")
+        else:
+            if not messagebox.askyesno("Send to Recycle Bin?", f"Send to Recycle Bin?\n\n{path_str}"):
                 return
-            path_str = self.tree.item(iid)["values"][0]
-            note = str(self.tree.item(iid)["values"][1])
-            if "keep" in note:
-                if not messagebox.askyesno("Delete original?",
-                        f"'{path_str}' is marked as the original to keep.\nSend it to the Recycle Bin anyway?"):
-                    return
-            else:
-                if not messagebox.askyesno("Send to Recycle Bin?", f"Send to Recycle Bin?\n\n{path_str}"):
-                    return
+        full_path = Path(self.manager.settings.master_mods_dir) / path_str
+        try:
+            self._send_to_recycle(full_path)
+            self.tree.delete(iid)
+            if path_str in self.manager.library:
+                del self.manager.library[path_str]
+                self.manager.save_library()
+            self.app.set_status(f"Sent to Recycle Bin: {path_str}", COLORS["positive"])
+        except Exception as ex:
+            messagebox.showerror("Error", f"Could not recycle file:\n{ex}")
+
+    def _recycle_all_dupes(self):
+        to_delete = []
+        for group_iid in self.tree.get_children():
+            for iid in self.tree.get_children(group_iid):
+                note = str(self.tree.item(iid)["values"][1])
+                if "duplicate" in note:
+                    to_delete.append((iid, self.tree.item(iid)["values"][0]))
+        if not to_delete:
+            messagebox.showinfo("Nothing to delete", "No duplicates found to remove.")
+            return
+        preview = "\n".join(p for _, p in to_delete[:10])
+        if len(to_delete) > 10:
+            preview += f"\n... and {len(to_delete) - 10} more"
+        if not messagebox.askyesno("Send all duplicates to Recycle Bin?",
+                f"Send {len(to_delete)} duplicate file(s) to the Recycle Bin?\n\n{preview}"):
+            return
+        failed = []
+        for iid, path_str in to_delete:
             full_path = Path(self.manager.settings.master_mods_dir) / path_str
             try:
                 self._send_to_recycle(full_path)
                 self.tree.delete(iid)
                 if path_str in self.manager.library:
                     del self.manager.library[path_str]
-                    self.manager.save_library()
-                self.app.set_status(f"Sent to Recycle Bin: {path_str}", COLORS["positive"])
             except Exception as ex:
-                messagebox.showerror("Error", f"Could not recycle file:\n{ex}")
-                
-        def _recycle_all_dupes(self):
-            to_delete = []
-            for group_iid in self.tree.get_children():
-                for iid in self.tree.get_children(group_iid):
-                    note = str(self.tree.item(iid)["values"][1])
-                    if "duplicate" in note:
-                        to_delete.append((iid, self.tree.item(iid)["values"][0]))
-            if not to_delete:
-                messagebox.showinfo("Nothing to delete", "No duplicates found to remove.")
-                return
-            preview = "\n".join(p for _, p in to_delete[:10])
-            if len(to_delete) > 10:
-                preview += f"\n\u2026and {len(to_delete) - 10} more"
-            if not messagebox.askyesno("Send all duplicates to Recycle Bin?",
-                    f"Send {len(to_delete)} duplicate file(s) to the Recycle Bin?\n\n{preview}"):
-                return
-            failed = []
-            for iid, path_str in to_delete:
-                full_path = Path(self.manager.settings.master_mods_dir) / path_str
-                try:
-                    self._send_to_recycle(full_path)
-                    self.tree.delete(iid)
-                    if path_str in self.manager.library:
-                        del self.manager.library[path_str]
-                except Exception as ex:
-                    failed.append(f"{path_str}: {ex}")
-                self.manager.save_library()
-                if failed:
-                    messagebox.showwarning("Some files failed", "\n".join(failed))
-                else:
-                    self.app.set_status(f"Sent {len(to_delete)} duplicate(s) to Recycle Bin.", COLORS["positive"])
-                self._result_label.config(
-                    text=f"Removed {len(to_delete)} duplicate(s). Re-scan to verify.",
-                    fg=COLORS["positive"])
+                failed.append(f"{path_str}: {ex}")
+        self.manager.save_library()
+        if failed:
+            messagebox.showwarning("Some files failed", "\n".join(failed))
+        else:
+            self.app.set_status(f"Sent {len(to_delete)} duplicate(s) to Recycle Bin.", COLORS["positive"])
+        self._result_label.config(
+            text=f"Removed {len(to_delete)} duplicate(s). Re-scan to verify.",
+            fg=COLORS["positive"])
     
  
     def _check(self):
         def do():
-            self.after(0, lambda: self.app.set_status("Checking for duplicates\u2026"))
+            self.after(0, lambda: self.app.set_status("Checking for duplicates..."))
             groups = self.manager.find_duplicates()
             self.after(0, lambda: self._populate(groups))
         # Re-scan hashes first
@@ -760,7 +809,7 @@ class DuplicatesPanel(tk.Frame):
         for i, group in enumerate(groups, 1):
             parent = self.tree.insert("", "end", text=f"#{i}", values=("", ""))
             for j, path in enumerate(group):
-                note = "keep (original)" if j == 0 else "\u26a0 duplicate"
+                note = "keep (original)" if j == 0 else "\u26a0 duplicate"  # Icon: ⚠
                 self.tree.insert(parent, "end", values=(path, note))
             self.tree.item(parent, open=True)
  
@@ -770,7 +819,7 @@ class DuplicatesPanel(tk.Frame):
                 fg=COLORS["warning"])
             self.app.set_status(f"{len(groups)} duplicate groups found.", COLORS["warning"])
         else:
-            self._result_label.config(text="\u2713 No duplicates found!", fg=COLORS["positive"])
+            self._result_label.config(text="\u2713 No duplicates found!", fg=COLORS["positive"])  # Icon: ✓
             self.app.set_status("No duplicates found.", COLORS["positive"])
  
     def refresh(self):
@@ -828,7 +877,7 @@ class ConfigsPanel(tk.Frame):
  
         btn_row = tk.Frame(self, bg=COLORS["bg"])
         btn_row.pack(fill="x", padx=20, pady=8)
-        StyledButton(btn_row, "Set Borrow Source…", self._set_borrow, "ghost").pack(side="left", padx=(0, 6))
+        StyledButton(btn_row, "Set Borrow Source...", self._set_borrow, "ghost").pack(side="left", padx=(0, 6))
         StyledButton(btn_row, "Use Own Copy", self._use_own, "ghost").pack(side="left", padx=(0, 6))
         StyledButton(btn_row, "Remove Config Entry", self._remove_config, "danger").pack(side="right")
  
@@ -977,7 +1026,7 @@ class SettingsPanel(tk.Frame):
             tk.Label(row, text=label, bg=COLORS["surface2"],
                      fg=COLORS["muted"], font=FONTS["small"], width=22, anchor="w").pack(side="left", padx=10, pady=8)
             ttk.Entry(row, textvariable=var, width=48).pack(side="left", padx=(0, 8), pady=8)
-            StyledButton(row, "Browse…", browse_fn, "ghost").pack(side="left", pady=8)
+            StyledButton(row, "Browse...", browse_fn, "ghost").pack(side="left", pady=8)
  
         self._master_var = tk.StringVar(value=self.manager.settings.master_mods_dir)
         self._sims_var = tk.StringVar(value=self.manager.settings.sims_mods_dir)
