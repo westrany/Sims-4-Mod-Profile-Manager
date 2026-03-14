@@ -24,11 +24,12 @@ COLORS = {
 }
  
 FONTS = {
-    "logo":    ("Georgia", 16, "bold"),
-    "heading": ("Georgia", 12, "bold"),
-    "body":    ("Helvetica", 11),
-    "small":   ("Helvetica", 10),
-    "mono":    ("Courier", 10),
+    "logo":            ("Georgia", 16, "bold"),
+    "heading":         ("Georgia", 12, "bold"),
+    "body":            ("Helvetica", 11),
+    "small":           ("Helvetica", 10),
+    "mono":            ("Courier", 10),
+    "profile_list":    ("Helvetica", 15),
 }
  
 NAV_ITEMS = [
@@ -138,10 +139,10 @@ class ProfilePanel(tk.Frame):
         list_frame.pack(fill="both", expand=True)
  
         self.profile_lb = tk.Listbox(list_frame, bg=COLORS["surface"],
-                                     fg=COLORS["fg"], selectbackground=COLORS["accent"],
-                                     selectforeground="#fff", font=FONTS["body"],
-                                     relief="flat", bd=0, highlightthickness=0,
-                                     activestyle="none")
+                                    fg=COLORS["fg"], selectbackground=COLORS["accent"],
+                                    selectforeground="#fff", font=FONTS["profile_list"],
+                                    relief="flat", bd=0, highlightthickness=0,
+                                    activestyle="none", selectborderwidth=0)
         self.profile_lb.pack(fill="both", expand=True, padx=4, pady=4)
         self.profile_lb.bind("<<ListboxSelect>>", self._on_select)
  
@@ -157,11 +158,11 @@ class ProfilePanel(tk.Frame):
                             padx=0, pady=4, bd=0)
             btn.pack(side="left", padx=1, fill="x", expand=True)
             tip_label = tk.Label(self, text=tip, bg=COLORS["accent"],
-                                fg="#1a1520", font=FONTS["small"],
+                                 fg="#1a1520", font=FONTS["small"],
                                  padx=8, pady=4, relief="flat")
             def show(e):
                 btn.config(bg=hover_color, fg="#fff")
-                # Place tooltip above the button, relative to the panels
+                # Place tooltip above the button, relative to the panel
                 x = btn.winfo_x() + btn_frame.winfo_x() + left.winfo_x()
                 y = btn.winfo_y() + btn_frame.winfo_y() + left.winfo_y() - 30
                 tip_label.place(x=x, y=y)
@@ -252,7 +253,7 @@ class ProfilePanel(tk.Frame):
         act_frame.pack(fill="x", pady=8)
  
         if not is_active:
-           StyledButton(act_frame, "\u25b6  Activate Profile",  # Icon: ▶
+            StyledButton(act_frame, "\u25b6  Activate Profile",  # Icon: ▶
                          lambda: self._activate(profile_name), "success").pack(side="left", padx=(0, 6))
         else:
             StyledButton(act_frame, "\u23f9  Deactivate",        # Icon: ⏹
@@ -275,7 +276,7 @@ class ProfilePanel(tk.Frame):
         sel = self.profile_lb.curselection()
         if not sel:
             return
-        self._show_detail(self.profile_lb.get(sel[0]))
+        self._show_detail(self.profile_lb.get(sel[0]).strip())
  
     def _new_profile(self):
         name = simpledialog.askstring("New Profile", "Profile name:", parent=self)
@@ -289,7 +290,7 @@ class ProfilePanel(tk.Frame):
         self.manager.save_profile(p)
         self.refresh()
         # Select the new profile
-        items = list(self.profile_lb.get(0, "end"))
+        items = [self.profile_lb.get(i).strip() for i in range(self.profile_lb.size())]
         if name in items:
             self.profile_lb.selection_set(items.index(name))
             self._show_detail(name)
@@ -299,7 +300,7 @@ class ProfilePanel(tk.Frame):
         sel = self.profile_lb.curselection()
         if not sel:
             return
-        old_name = self.profile_lb.get(sel[0])
+        old_name = self.profile_lb.get(sel[0]).strip()
         new_name = simpledialog.askstring("Rename Profile", "New name:",
                                           initialvalue=old_name, parent=self)
         if not new_name or new_name == old_name:
@@ -312,7 +313,6 @@ class ProfilePanel(tk.Frame):
         profile = self.manager.profiles[old_name]
         profile.name = new_name
         # Remove old file, save under new name
-        import re
         old_safe = re.sub(r'[^\w\-]', '_', old_name)
         old_path = self.manager.profiles_dir / f"{old_safe}.json"
         if old_path.exists():
@@ -326,7 +326,7 @@ class ProfilePanel(tk.Frame):
             self.manager.save_settings()
         self.refresh()
         # Re-select the renamed profile
-        items = list(self.profile_lb.get(0, "end"))
+        items = [self.profile_lb.get(i).strip() for i in range(self.profile_lb.size())]
         if new_name in items:
             self.profile_lb.selection_set(items.index(new_name))
         self._show_detail(new_name)
@@ -336,7 +336,7 @@ class ProfilePanel(tk.Frame):
         sel = self.profile_lb.curselection()
         if not sel:
             return
-        name = self.profile_lb.get(sel[0])
+        name = self.profile_lb.get(sel[0]).strip()
         if not messagebox.askyesno("Delete Profile", f"Delete profile '{name}'?"):
             return
         if self.manager.settings.active_profile == name:
@@ -367,7 +367,7 @@ class ProfilePanel(tk.Frame):
         self.app.refresh()
         sel = self.profile_lb.curselection()
         if sel:
-            self._show_detail(self.profile_lb.get(sel[0]))
+            self._show_detail(self.profile_lb.get(sel[0]).strip())
         self.app.set_status("Profile deactivated.")
  
     def _export(self, name: str):
@@ -419,17 +419,25 @@ class ProfilePanel(tk.Frame):
         sel_name = None
         sel = self.profile_lb.curselection()
         if sel:
-            sel_name = self.profile_lb.get(sel[0])
+            sel_name = self.profile_lb.get(sel[0]).strip()
  
         self.profile_lb.delete(0, "end")
         for name in sorted(self.manager.profiles.keys()):
-            self.profile_lb.insert("end", name)
-            # Highlight active profile in green
+            self.profile_lb.insert("end", f"  {name}  ")  # padding via space
+            idx = self.profile_lb.size() -1
             if name == self.manager.settings.active_profile:
-                self.profile_lb.itemconfig(self.profile_lb.size() - 1, fg=COLORS["positive"])
+                # Active profile: green text, green highlight on select
+                self.profile_lb.itemconfig(idx, fg=COLORS["positive"],
+                                           selectbackground=COLORS["positive"],
+                                           selectforeground="#1a1520")
+            else:
+                # Inactive profile: default purple text, purple highlight on select
+                self.profile_lb.itemconfig(idx, fg=COLORS["fg"],
+                                           selectbackground=COLORS["accent"],
+                                           selectforeground="#fff")
  
         if sel_name and sel_name in self.manager.profiles:
-            items = list(self.profile_lb.get(0, "end"))
+            items = [self.profile_lb.get(i).strip() for i in range(self.profile_lb.size())]
             if sel_name in items:
                 self.profile_lb.selection_set(items.index(sel_name))
  
