@@ -150,6 +150,7 @@ class ProfilePanel(tk.Frame):
         btn_frame.pack(fill="x", pady=8)
         StyledButton(btn_frame, "+ New", self._new_profile, "primary").pack(side="left", padx=(0, 4))
         StyledButton(btn_frame, "Import", self._import_profile, "ghost").pack(side="left", padx=(0, 4))
+        StyledButton(btn_frame, "Rename", self._rename_profile, "ghost").pack(side="left", padx=(0, 4))
         StyledButton(btn_frame, "Delete", self._delete_profile, "danger").pack(side="right")
  
         # Right side
@@ -273,6 +274,42 @@ class ProfilePanel(tk.Frame):
             self.profile_lb.selection_set(idx)
             self._show_detail(name)
         self.app.set_status(f"Created profile '{name}'")
+        
+    def _rename_profile(self):
+        sel = self.profile_lb.curselection()
+        if not sel:
+            return
+        old_name = self.profile_lb.get(sel[0])
+        new_name = simpledialog.askstring("Rename Profile", "New name:", 
+                                        initialvalue=old_name, parent=self)
+        if not new_name or new_name == old_name:
+            return
+        if new_name in self.manager.profiles:
+            messagebox.showerror("Error", f"A profile named '{new_name}' already exists.")
+            return
+        # Update the profile object
+        profile = self.manager.profiles[old_name]
+        profile.name = new_name
+        # Remove old file, save under new name
+        import re
+        old_safe = re.sub(r'[^\w\-]', '_', old_name)
+        old_path = self.manager.profiles_dir / f"{old_safe}.json"
+        if old_path.exists():
+            old_path.unlink()
+        del self.manager.profiles[old_name]
+        self.manager.profiles[new_name] = profile
+        self.manager.save_profile(profile)
+        # Update active profile name if it was the renamed one
+        if self.manager.settings.active_profile == old_name:
+            self.manager.settings.active_profile = new_name
+            self.manager.save_settings()
+        self.refresh()
+        # Re-select the renamed profile
+        items = list(self.profile_lb.get(0, "end"))
+        if new_name in items:
+            self.profile_lb.selection_set(items.index(new_name))
+        self._show_detail(new_name)
+        self.app.set_status(f"Renamed '{old_name}' to '{new_name}'")
  
     def _delete_profile(self):
         sel = self.profile_lb.curselection()
