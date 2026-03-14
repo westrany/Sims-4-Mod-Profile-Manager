@@ -326,8 +326,8 @@ class ModManager:
         self.save_settings()
         return {"linked": linked, "missing": missing}
     
-    LOG_EXTENSIONS = {".log", ".html", ".txt", ".cfg"}
-    LOG_KEYWORDS = {"log", "exception", "lastexception", "error", "resource"}
+    LOG_EXTENSIONS = {".log", ".html", ".txt"}
+    LOG_KEYWORDS = {"log", "exception", "lastexception", "error"}
     
     def _clear_sims_log_files(self):
         """Delete log files left by mods in the Sims 4 Mods folder."""
