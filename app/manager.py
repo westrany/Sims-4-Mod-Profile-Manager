@@ -106,6 +106,7 @@ class AppSettings:
     master_mods_dir: str = ""
     sims_mods_dir: str = ""
     active_profile: str = ""
+    clear_logs_on_switch: bool = True
 
     def to_dict(self):
         return asdict(self)
@@ -286,6 +287,8 @@ class ModManager:
 
         self.sims_dir.mkdir(parents=True, exist_ok=True)
         self._clear_sims_mods_symlinks()
+        if self.settings.clear_logs_on_switch:
+            self._clear_sims_log_files()
 
         profile = self.profiles[name]
         linked = 0
@@ -322,9 +325,31 @@ class ModManager:
         self.settings.active_profile = name
         self.save_settings()
         return {"linked": linked, "missing": missing}
+    
+    LOG_EXTENSIONS = {".log", ".html", ".txt"}
+    LOG_KEYWORDS = {"log", "exception", "lastexception", "error"}
+    
+    def _clear_sims_log_files(self):
+        """Delete log files left by mods in the Sims 4 Mods folder."""
+        if not self.sims_dir.exists():
+            return
+        deleted = 0
+        for item in self.sims_dir.iterdir():
+            if item.is_file() and not item.is_symlink():
+                ext = item.suffix.lower()
+                name_lower = item.name.lower()
+                if ext in self.LOG_EXTENSIONS and any(kw in name_lower for kw in self.LOG_KEYWORDS):
+                    try:
+                        item.unlink()
+                        deleted += 1
+                    except Exception:
+                        pass
+        return deleted
 
     def deactivate_current(self):
         self._clear_sims_mods_symlinks()
+        if self.settings.clear_logs_on_switch:
+            self._clear_sims_log_files()
         self.settings.active_profile = ""
         self.save_settings()
 
