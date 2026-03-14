@@ -299,7 +299,7 @@ class ProfilePanel(tk.Frame):
                 self.after(0, lambda: self.app.refresh())
                 self.after(0, lambda: self._show_detail(name))
             except Exception as ex:
-                self.after(0, lambda: messagebox.showerror("Error", str(ex)))
+                self.after(0, lambda e=ex: messagebox.showerror("Error", str(e)))
  
         self.app.set_status("Activating profile…")
         threading.Thread(target=do, daemon=True).start()
@@ -621,8 +621,8 @@ class DuplicatesPanel(tk.Frame):
         # Pack buttons and label BEFORE tree so they're never pushed off screen
         btn_row = tk.Frame(self, bg=COLORS["bg"])
         btn_row.pack(fill="x", padx=20, pady=(0, 4), side="bottom")
-        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", self._recycle_selected, "danger").pack(side="left")
-        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", self._recycle_all_dupes, "danger").pack(side="left", padx=8)
+        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", lambda: self._recycle_selected, "danger").pack(side="left")
+        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", lambda:self._recycle_all_dupes, "danger").pack(side="left", padx=8)
         
         self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
                                       bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
