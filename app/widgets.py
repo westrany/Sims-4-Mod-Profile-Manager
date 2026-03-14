@@ -741,7 +741,7 @@ class DuplicatesPanel(tk.Frame):
                     self.app.set_status(f"Sent {len(to_delete)} duplicate(s) to Recycle Bin.", COLORS["positive"])
                 self._result_label.config(
                     text=f"Removed {len(to_delete)} duplicate(s). Re-scan to verify.",
-                    fg=COLORS["positive"])                )
+                    fg=COLORS["positive"])
     
  
     def _check(self):
