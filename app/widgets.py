@@ -142,8 +142,7 @@ class ProfilePanel(tk.Frame):
                                     fg=COLORS["fg"], selectbackground=COLORS["accent"],
                                     selectforeground="#fff", font=FONTS["profile_list"],
                                     relief="flat", bd=0, highlightthickness=0,
-                                    activestyle="none", selectborderwidth=0,
-                                    pady=8)
+                                    activestyle="none", selectborderwidth=0)
         self.profile_lb.pack(fill="both", expand=True, padx=4, pady=4)
         self.profile_lb.bind("<<ListboxSelect>>", self._on_select)
  
