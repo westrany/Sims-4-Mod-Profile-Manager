@@ -634,14 +634,119 @@ class DuplicatesPanel(tk.Frame):
         self.tree.configure(yscrollcommand=sc.set)
         sc.pack(side="right", fill="y")
         self.tree.pack(fill="both", expand=True)
+        
+        btn_row = tk.Frame(self, bg=COLORS["bg"])
+        btn_row.pack(fill="x", padx=20, pady=(6,0)
+                     )
  
         self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
                                       bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
-        self._result_label.pack(anchor="w", padx=20, pady=(0, 16))
+        self._result_label.pack(anchor="w", padx=20, pady=(6, 0))
+    
+    def _send_to_recycle(self, path):
+        import platform
+        system = platform.system()
+        if system == "Windwos":
+            import cytypes
+            from cytypes import wintypes
+            class SHFILEOPSTRUCT(cytypes.structure):
+                _fields_ = [
+                    ("hwnd",                  wintypes.HWND),
+                    ("wFunc",                 wintypes.UINT),
+                    ("pFrom",                 wintypes.LPCWSTR),
+                    ("pTo",                   wintypes.LPCWSTR),
+                    ("fFlags",                wintypes.WORD),
+                    ("fAnyOperationsAborted", wintypes.BOOL),
+                    ("hNameMappings",         ctypes.c_void_p),
+                    ("lpszProgressTitle",     wintypes.LPCWSTR),
+                ] 
+            FO_DELETE = 3
+            FOF_ALLOWUNDO = 0x0040
+            FOF_NOCONFIRMATION = 0x0010
+            FOF_SILENT = 0x0004
+            op = SHFILEOPSTRUCT()
+            op.wFunc = FO_DELETE
+            op.pFrom = str(path) + "\0\0"
+            op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
+            cytypes.windll.shell32.SHFileOperationW(cytypes.byref(op))
+        elif system == "Darwin":
+            import subprocess
+            subprocess.run(["osascript", "-e", f'tell application "Finder" to delete POSIX file "{path}"'])
+        
+        else:
+            import shutil
+            trash = Path.home() / ".local/share/Trash/files"
+            trash.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(path), trash / Path(path).name)
+            
+        def _recycle_selected(self):
+            sel = self.tree.selection()
+            if not sel:
+                messagebox.showinfo("Nothing selected", "Click a duplicate file row to select it first.")
+                return
+            iid = sel[0]
+            if not self.tree.parent(iid):
+                messagebox.showinfo("Select a file", "Select an individual file row, not a group header.")
+                return
+            path_str = self.tree.item(iid)["values"][0]
+            note = str(self.tree.item(iid)["values"][1])
+            if "keep" in note:
+                if not messagebox.askyesno("Delete original?",
+                                           f"'{path_str}' is marked as the original to keep.\nSend it to the Recycle Bin anyway?"):
+                    return
+            else:
+                if not messagebox.askyesno("Send to Recycle Bin?", f"Send to Recycle Bin?\n\n{path_str}"):
+                    return
+            full_path = Path(self.manager.settings.master_mods_dir) / path_str
+            try:
+                self._send_to_recycle(full_path)
+                self.tree.delete(iid)
+                if path_str in self.manager.library:
+                    del self.manager.library[path_str]
+                    self.manager.save_library()
+                self.app.set_status(f"Sent to Recycle Bin: {path_str}", COLORS["positive"])
+            except Exception as ex:
+                messagebox.showerror("Error", f"Could not recycle file:\n{ex}")
+                
+        def _recycle_all_dupes(self):
+            to_delete = []
+            for group_iid in self.tree.get_children():
+                for iid in self.tree.get_children(group_iid):
+                    note = str(self.tree.item(iid)["values"][1])
+                    if "duplicate" in note:
+                        to_delete.append((iid, self.tree.item(iid)["values"][0]))
+            if not to_delete:
+                messagebox.showinfo("Nothing to delete", "No duplicates found to remove.")
+                return
+            preview = "\n".join(p for _, p in to_delete[:10])
+            if len(to_delete) > 10:
+                preview += f"\n\u2026and {len(to_delete) - 10} more"
+            if not messagebox.askyesno("Send all duplicates to Recycle Bin?",
+                                       f"Send {len(to_delete)} duplicate file(s) to the Recycle Bin?\n\n{preview}"):
+                return
+            failed = []
+            for iid, path_str in to_delete:
+                full_path = Path(self.manager.settings.master_mods_dir) / path_str
+                try:
+                    self._send_to_recycle(full_path)
+                    self.tree.delete(iid)
+                    if path_str in self.manager.library:
+                        del self.manager.library[path_str]
+                except Exception as ex:
+                    failed.append(f"{path_str}: {ex}")
+                self.manager.save_library()
+                if failed:
+                        messagebox.showwarning("Some files failed", "\n".join(failed))
+                else:
+                    self.app.set_status(f"Sent {len(to_delete)} duplicate(s) to Recycle Bin.", COLORS["positive"])
+                self._result_label.config(
+                    text=f"Removed {len(to_delete)} duplicate(s). Re-scan to verify.",
+                    fg=COLORS["positive"])
+    
  
     def _check(self):
         def do():
-            self.after(0, lambda: self.app.set_status("Checking for duplicates…"))
+            self.after(0, lambda: self.app.set_status("Checking for duplicates\u2026"))
             groups = self.manager.find_duplicates()
             self.after(0, lambda: self._populate(groups))
         # Re-scan hashes first
@@ -653,18 +758,17 @@ class DuplicatesPanel(tk.Frame):
         for i, group in enumerate(groups, 1):
             parent = self.tree.insert("", "end", text=f"#{i}", values=("", ""))
             for j, path in enumerate(group):
-                note = "keep (original)" if j == 0 else "⚠ duplicate"
+                note = "keep (original)" if j == 0 else "\u26a0 duplicate"
                 self.tree.insert(parent, "end", values=(path, note))
             self.tree.item(parent, open=True)
  
         if groups:
             self._result_label.config(
-                text=f"Found {len(groups)} duplicate group(s). Review and manually remove extras from your master folder.",
-                fg=COLORS["warning"]
-            )
+                text=f"Found {len(groups)} duplicate group(s). Select a file and use the buttons below.",
+                fg=COLORS["warning"])
             self.app.set_status(f"{len(groups)} duplicate groups found.", COLORS["warning"])
         else:
-            self._result_label.config(text="✓ No duplicates found!", fg=COLORS["positive"])
+            self._result_label.config(text="\u2713 No duplicates found!", fg=COLORS["positive"])
             self.app.set_status("No duplicates found.", COLORS["positive"])
  
     def refresh(self):
