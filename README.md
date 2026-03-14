@@ -26,7 +26,6 @@ python main.py
 2. Set **Master Mods Folder** — this is where ALL your mods live (your giant collection)
 3. Set **Sims 4 Mods Folder** — usually:
    - Windows: `C:\Users\<You>\Documents\Electronic Arts\The Sims 4\Mods`
-   - Mac: `~/Documents/Electronic Arts/The Sims 4/Mods`
 4. Save settings
 
 ---
@@ -42,7 +41,7 @@ python main.py
 ### Creating Profiles
 
 - Go to **Profiles** → **+ New**
-- Name it (e.g. "Vanilla Gameplay", "CC Fashion Build", "NSFW Challenge")
+- Name it (e.g. "Main Mods", "Medieval Mods")
 - Click **Edit Mods…** to open the mod picker:
   - Search and double-click or select + click "Add Selected →"
   - Right side shows what's enabled; remove mods with "← Remove Selected"
@@ -103,3 +102,9 @@ The settings panel shows the exact path.
 - On **Windows**, creating symlinks may require running as Administrator, or enabling Developer Mode in Windows Settings → For Developers → Developer Mode
 - The app stores mod metadata (filename, size, hash) but never copies your mod files — only indexes them
 - Config files you upload ARE copied into the app data directory, one copy per profile
+- You may encounter Python permission issues where Windows Defender blocks your python.exe from running; you can fix this by
+            1. Click "Controlled folder access settings" in that same notification (or go to Windows Security → Virus & threat protection → Manage ransomware protection)
+            2. Click "Allow an app through Controlled folder access"
+            3. Click "Add an allowed app" → "Browse all apps"
+            4. Navigate to your Python install and select python.exe — likely at C:\Python312\python.exe
+            5. Click Open, then confirm 
