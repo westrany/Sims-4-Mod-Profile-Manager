@@ -647,9 +647,9 @@ class DuplicatesPanel(tk.Frame):
         import platform
         system = platform.system()
         if system == "Windwos":
-            import cytypes
-            from cytypes import wintypes
-            class SHFILEOPSTRUCT(cytypes.structure):
+            import ctypes
+            from ctypes import wintypes
+            class SHFILEOPSTRUCT(ctypes.structure):
                 _fields_ = [
                     ("hwnd",                  wintypes.HWND),
                     ("wFunc",                 wintypes.UINT),
@@ -668,7 +668,7 @@ class DuplicatesPanel(tk.Frame):
             op.wFunc = FO_DELETE
             op.pFrom = str(path) + "\0\0"
             op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
-            cytypes.windll.shell32.SHFileOperationW(cytypes.byref(op))
+            ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
         elif system == "Darwin":
             import subprocess
             subprocess.run(["osascript", "-e", f'tell application "Finder" to delete POSIX file "{path}"'])
