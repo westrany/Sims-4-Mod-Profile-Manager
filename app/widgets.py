@@ -617,10 +617,20 @@ class DuplicatesPanel(tk.Frame):
         info = tk.Label(self, text="Duplicate detection compares file contents by hash — not just filenames.",
                         bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
         info.pack(anchor="w", padx=20, pady=(0, 8))
+        
+        # Pack buttons and label BEFORE tree so they're never pushed off screen
+        btn_row = tk.Frame(self, bg=COLORS["bg"])
+        btn_row.pack(fill="x", padx=20, pady=(0, 4), side="bottom")
+        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", self._recycle_selected, "danger").pack(side="left")
+        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", self._recycle_all_dupes, "danger").pack(side="left", padx=8)
+        
+        self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
+                                      bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
+        self._result_label.pack(anchor="w", padx=20, pady=(0, 4), side="bottom")
  
         tree_frame = tk.Frame(self, bg=COLORS["surface"])
-        tree_frame.pack(fill="both", expand=True, padx=20, pady=(0, 8))
- 
+        tree_frame.pack(fill="both", expand=True, padx=20, pady=(0, 4))
+
         self.tree = ttk.Treeview(tree_frame, columns=("path", "note"),
                                  show="tree headings", selectmode="browse")
         self.tree.heading("#0", text="Group")
@@ -629,27 +639,19 @@ class DuplicatesPanel(tk.Frame):
         self.tree.column("#0", width=80)
         self.tree.column("path", width=520)
         self.tree.column("note", width=120)
- 
+
         sc = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sc.set)
         sc.pack(side="right", fill="y")
         self.tree.pack(fill="both", expand=True)
-        
-        btn_row = tk.Frame(self, bg=COLORS["bg"])
-        btn_row.pack(fill="x", padx=20, pady=(6,0)
-                     )
- 
-        self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
-                                      bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
-        self._result_label.pack(anchor="w", padx=20, pady=(6, 0))
-    
+
     def _send_to_recycle(self, path):
         import platform
         system = platform.system()
-        if system == "Windwos":
+        if system == "Windows":
             import ctypes
             from ctypes import wintypes
-            class SHFILEOPSTRUCT(ctypes.structure):
+            class SHFILEOPSTRUCT(ctypes.Structure):
                 _fields_ = [
                     ("hwnd",                  wintypes.HWND),
                     ("wFunc",                 wintypes.UINT),
@@ -659,7 +661,7 @@ class DuplicatesPanel(tk.Frame):
                     ("fAnyOperationsAborted", wintypes.BOOL),
                     ("hNameMappings",         ctypes.c_void_p),
                     ("lpszProgressTitle",     wintypes.LPCWSTR),
-                ] 
+                ]
             FO_DELETE = 3
             FOF_ALLOWUNDO = 0x0040
             FOF_NOCONFIRMATION = 0x0010
@@ -671,14 +673,14 @@ class DuplicatesPanel(tk.Frame):
             ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
         elif system == "Darwin":
             import subprocess
-            subprocess.run(["osascript", "-e", f'tell application "Finder" to delete POSIX file "{path}"'])
-        
+            subprocess.run(["osascript", "-e",
+                            f'tell application "Finder" to delete POSIX file "{path}"'])
         else:
             import shutil
             trash = Path.home() / ".local/share/Trash/files"
             trash.mkdir(parents=True, exist_ok=True)
             shutil.move(str(path), trash / Path(path).name)
-            
+ 
         def _recycle_selected(self):
             sel = self.tree.selection()
             if not sel:
@@ -692,7 +694,7 @@ class DuplicatesPanel(tk.Frame):
             note = str(self.tree.item(iid)["values"][1])
             if "keep" in note:
                 if not messagebox.askyesno("Delete original?",
-                                           f"'{path_str}' is marked as the original to keep.\nSend it to the Recycle Bin anyway?"):
+                        f"'{path_str}' is marked as the original to keep.\nSend it to the Recycle Bin anyway?"):
                     return
             else:
                 if not messagebox.askyesno("Send to Recycle Bin?", f"Send to Recycle Bin?\n\n{path_str}"):
@@ -722,7 +724,7 @@ class DuplicatesPanel(tk.Frame):
             if len(to_delete) > 10:
                 preview += f"\n\u2026and {len(to_delete) - 10} more"
             if not messagebox.askyesno("Send all duplicates to Recycle Bin?",
-                                       f"Send {len(to_delete)} duplicate file(s) to the Recycle Bin?\n\n{preview}"):
+                    f"Send {len(to_delete)} duplicate file(s) to the Recycle Bin?\n\n{preview}"):
                 return
             failed = []
             for iid, path_str in to_delete:
@@ -736,7 +738,7 @@ class DuplicatesPanel(tk.Frame):
                     failed.append(f"{path_str}: {ex}")
                 self.manager.save_library()
                 if failed:
-                        messagebox.showwarning("Some files failed", "\n".join(failed))
+                    messagebox.showwarning("Some files failed", "\n".join(failed))
                 else:
                     self.app.set_status(f"Sent {len(to_delete)} duplicate(s) to Recycle Bin.", COLORS["positive"])
                 self._result_label.config(
