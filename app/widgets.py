@@ -621,8 +621,8 @@ class DuplicatesPanel(tk.Frame):
         # Pack buttons and label BEFORE tree so they're never pushed off screen
         btn_row = tk.Frame(self, bg=COLORS["bg"])
         btn_row.pack(fill="x", padx=20, pady=(0, 4), side="bottom")
-        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", lambda: self._recycle_selected, "danger").pack(side="left")
-        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", lambda:self._recycle_all_dupes, "danger").pack(side="left", padx=8)
+        StyledButton(btn_row, "\U0001f5d1  Send Selected to Recycle Bin", lambda: self._recycle_selected(), "danger").pack(side="left")
+        StyledButton(btn_row, "\U0001f5d1  Send All Duplicates to Recycle Bin", lambda: self._recycle_all_dupes(), "danger").pack(side="left", padx=8)
         
         self._result_label = tk.Label(self, text="Run a check to find duplicate mods.",
                                       bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"])
@@ -990,6 +990,25 @@ class SettingsPanel(tk.Frame):
                  "Sims 4 Mods Folder: where Sims 4 looks for mods (symlinks go here).",
             bg=COLORS["bg"], fg=COLORS["muted"], font=FONTS["small"], justify="left")
         note.pack(anchor="w", pady=12)
+        
+        # Log clearing toggle
+        toggle_frame = tk.Frame(content, bg=COLORS["surface2"])
+        toggle_frame.pack(fill="x", pady=(0, 12))
+        self._clear_logs_var = tk.BooleanVar(value=self.manager.settings.clear_logs_on_switch)
+        tk.Checkbutton(
+            toggle_frame,
+            text="  Clear mod log files when switching profiles",
+            variable=self._clear_logs_var,
+            bg=COLORS["surface2"], fg=COLORS["fg"],
+            selectcolor=COLORS["bg"], activebackground=COLORS["surface2"],
+            activeforeground=COLORS["accent"], font=FONTS["body"],
+            cursor="hand2", bd=0, highlightthickness=0,
+        ).pack(anchor="w", padx=10, pady=8)
+        tk.Label(toggle_frame,
+                 text="Removes .log and lastexception files from your Sims 4 Mods folder on each profile switch. "
+                        "Recommended on for most players.",
+                 bg=COLORS["surface2"], fg=COLORS["muted"], font=FONTS["small"],
+                 wraplength=580, justify="left").pack(anchor="w", padx=10, pady=(0, 8))
  
         StyledButton(content, "Save Settings", self._save, "success").pack(anchor="w", pady=8)
  
@@ -1010,10 +1029,12 @@ class SettingsPanel(tk.Frame):
     def _save(self):
         self.manager.settings.master_mods_dir = self._master_var.get()
         self.manager.settings.sims_mods_dir = self._sims_var.get()
+        self.manager.settings.clear_logs_on_switch = self._clear_logs_var.get()
         self.manager.save_settings()
         self.app.set_status("Settings saved.", COLORS["positive"])
  
     def refresh(self):
         self._master_var.set(self.manager.settings.master_mods_dir)
         self._sims_var.set(self.manager.settings.sims_mods_dir)
+        self._clear_logs_var.set(self.manager.settings.clear_logs_on_switch)
  
