@@ -372,6 +372,24 @@ class ModManager:
         if not d.exists():
             return []
         return [p.name for p in d.iterdir() if p.is_file()]
+    
+    def _config_library_path(self, filename: str) -> Path:
+        """Path to a config stored in the global library (configs_dir root)."""
+
+    def save_config_to_library(self, filename : str, content: bytes):
+        """Save or overwrite a config file in the global config library."""
+        path = self._config_library_path(filename)
+        with open(path, "wb") as f:
+            f.write(content)
+
+    def list_library_configs(self) -> list[str]:
+        """List config files stored in the global config library (not per profile)."""
+        return sorted([p.name for p in self.configs_dir.iterdit() if p.is_file()])
+    
+    def load_library_config(self, filename: str) -> bytes:
+        """Return raw bytes of a stored config file in the global library."""
+        path = self.config_library_path(filename)
+        return path.read_bytes()
 
     # ── Import / Export ───────────────────────────────────────────────────────
 
