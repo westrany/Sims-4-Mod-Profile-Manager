@@ -99,6 +99,7 @@ All app data (profiles, library index, stored configs) lives in:
 ---
 
 ## Developer Notes & Distribution
+- The mod files shown in the screenshots are **not my own**; they are included purely as examples to demonstrate how the application works. The folder paths visible in the screenshots reflect my personal directory structure and may differ from yours.
 - I have not checked wether this works on Linux/MAC and I myself do not plan to do so. If anyone wants to double check this, that would be greatly appreciated and credit shall be duly given.
 - Currently this program requires Python installed and needs to be accessed via a terminal, which is not very user friendly for non-tech literate folks. If anyone wishes to make a more friendly way to access this, do get in touch :)
 
