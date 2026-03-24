@@ -8,7 +8,7 @@ Manage mods with symlinks — toggle them on/off and switch between mod lists wi
 
 - Python 3.10+
 - Tkinter (usually bundled with Python)
-- No third-party packages needed
+- You MUST HAVE pre-existing knowledge on how to instal Python and open applications via Terminal. I will not be teaching you and this application as is is intended for tech-literate individuals.
 
 ---
 
