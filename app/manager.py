@@ -310,17 +310,44 @@ class ModManager:
             os.symlink(src.resolve(), dest)
             linked += 1
 
-        # Config files
+        # Config files (copy-based swapping)
         for cfg in profile.config_files:
+            # Determine source: profile's own stored copy or borrow from another profile
             if cfg.source_profile:
                 cfg_src = self._config_path(cfg.source_profile, cfg.config_filename)
             else:
                 cfg_src = self._config_path(name, cfg.config_filename)
-            if cfg_src.exists():
-                dest = self.sims_dir / cfg.config_filename
+
+            # If profile copy missing, fall back to global library
+            if not cfg_src.exists():
+                lib_src = self._config_library_path(cfg.config_filename)
+                if lib_src.exists():
+                    cfg_src = lib_src
+
+            if not cfg_src.exists():
+                # Nothing to copy for this config
+                continue
+                
+            dest = self.sims_dir / cfg.config_filename
+
+            # Backup existing file in Sims mod folder (if any)
+            try:
+                if dest.exists() and not dest.is_symlink():
+                    backup = self.sims_dir / (cfg.config_filename + ".backup")
+                    shutil.copy2(dest, backup)
+                # Ensure any existhing dest (file or symlink) is removed before copying
                 if dest.exists() or dest.is_symlink():
                     dest.unlink()
-                os.symlink(cfg_src.resolve(), dest)
+            except Exception:
+                # Best-effort, continue even if backup/unlink fails
+                pass
+
+            # Copy chosen source into the Sims Mods folder with the hardcoded filename
+            try:
+                shutil.copy2(cfg_src, dest)
+            except Exception:
+                # Ignore copy errors
+                pass
 
         self.settings.active_profile = name
         self.save_settings()
