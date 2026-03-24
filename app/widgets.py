@@ -866,7 +866,10 @@ class ConfigsPanel(tk.Frame):
         self._profile_combo.pack(side="left", padx=8)
         self._profile_combo.bind("<<ComboboxSelected>>", lambda e: self._load_profile_configs())
  
-        StyledButton(sel_row, "Upload Config File", self._upload_config, "ghost").pack(side="right")
+       # Keep original upload button but add explicit library import and add-from-library actions
+        StyledButton(sel_row, "Upload Config File", self._upload_config, "ghost").pack(side="right", padx=(6,0))
+        StyledButton(sel_row, "Import to Library", self._import_to_library, "ghost").pack(side="right", padx=(6,0))
+        StyledButton(sel_row, "Add from Library", self._add_from_library, "ghost").pack(side="right")
  
         # Config list
         tree_frame = tk.Frame(self, bg=COLORS["surface"])
@@ -890,24 +893,36 @@ class ConfigsPanel(tk.Frame):
         StyledButton(btn_row, "Remove Config Entry", self._remove_config, "danger").pack(side="right")
  
     def _load_profile_configs(self):
+        """Populate tree with profile's configs and available library configs."""
         self.tree.delete(*self.tree.get_children())
         name = self._profile_var.get()
         if not name or name not in self.manager.profiles:
             return
         p = self.manager.profiles[name]
+        # Show profile's configured entries first
         for cfg in p.config_files:
             src = cfg.source_profile if cfg.source_profile else "own copy"
             self.tree.insert("", "end", iid=cfg.config_filename,
                              values=(cfg.config_filename, src))
-        # Also show stored config files not yet in profile
-        stored = self.manager.list_config_files(name)
-        for fname in stored:
+        # Show global library fields that are not yet ssigned to this profile
+        try:
+            library_files = self.manager.list_library_configs()
+        except Exception:
+            library_files = []
+        for fname in library_files:
             if not self.tree.exists(fname):
-                self.tree.insert("", "end", iid=fname, values=(fname, "stored (not linked to profile)"),
+                # Mark as unlinked/library so user can add/assign it
+                self.tree.insert("", "end", iid=fname, values=(fname, "library (not assigned)"),
                                  tags=("unlinked",))
         self.tree.tag_configure("unlinked", foreground=COLORS["muted"])
  
     def _upload_config(self):
+        """
+        Upload a config file and save it both to the profile storage (existing behavior)
+        and to the global library so other profiles can reuse it.
+        """
+        import shutil
+
         name = self._profile_var.get()
         if not name:
             messagebox.showwarning("No Profile", "Select a profile first.")
@@ -919,7 +934,22 @@ class ConfigsPanel(tk.Frame):
         src = Path(path)
         with open(src, "rb") as f:
             content = f.read()
-        self.manager.save_config_file(name, src.name, content)
+
+        # Save a copy into the profile's storage (preserve existing behaviour)
+        try:
+            self.manager.save_config_file(name, src.name, content)
+        except Exception:
+            # Best-effort; continue even if profile save fails
+            pass
+
+        # Save a copy into the global config library so it can be reused
+        try:
+            # manager.save_config_to_library is expected to exist (minimal manager change)
+            self.manager.save_config_to_library(src.name, content)
+        except Exception:
+            # Best-effort; continue even if library save fails
+            pass
+
         # Add to profile config list if not already
         p = self.manager.profiles[name]
         existing = {c.config_filename for c in p.config_files}
@@ -928,6 +958,83 @@ class ConfigsPanel(tk.Frame):
             self.manager.save_profile(p)
         self._load_profile_configs()
         self.app.set_status(f"Saved config '{src.name}' for profile '{name}'", COLORS["positive"])
+
+    def _import_to_library(self):
+        """Import a config file into the global library (does not auto-assign to a profile)."""
+        path = filedialog.askopenfilename(
+            title="Import config to library",
+            filetypes=[("Config files", "*.cfg *.ini *.xml *.json"), ("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        src = Path(path)
+
+        # Reuse manager's log heuristics (defined in manager.py)
+        LOG_EXTS = getattr(self.manager, "LOG_EXTENSIONS", {".log", ".html", ".txt"})
+        LOG_KEYWORDS = getattr(self.manager, "LOG_KEYWORDS", {"log", "exception", "error", "traceback", "lastexception"})
+
+        name_lower = src.name.lower()
+        ext = src.suffix.lower()
+
+        # Block obvious log files
+        if ext in LOG_EXTS:
+            if ext == ".txt":
+                if any(k in name_lower for k in LOG_KEYWORDS):
+                    messagebox.showwarning("Import blocked", f"'{src.name}' looks like a log file and was not imported.")
+                    return
+            else:
+                messagebox.showwarning("Import blocked", f"'{src.name}' is a log file and was not imported.")
+                return
+
+        # Extra heuristic: block filenames containing log/error keywords unless clearly a config extension
+        if any(k in name_lower for k in LOG_KEYWORDS) and ext not in {".cfg", ".ini", ".xml", ".json"}:
+            messagebox.showwarning("Import blocked", f"'{src.name}' looks like a log/exception file and was not imported.")
+            return
+
+        try:
+            content = src.read_bytes()
+            self.manager.save_config_to_library(src.name, content)
+            self.app.set_status(f"Imported '{src.name}' to library", COLORS["positive"])
+            self._load_profile_configs()
+        except Exception as ex:
+            messagebox.showerror("Import failed", str(ex))
+
+    def _add_from_library(self):
+        """
+        Assign a config from the global library into the selected profile.
+        This creates a profile-local copy (so the profile can edit it later).
+        """
+        name = self._profile_var.get()
+        if not name:
+            messagebox.showwarning("No Profile", "Select a profile first.")
+            return
+
+        try:
+            library_files = self.manager.list_library_configs()
+        except Exception:
+            library_files = []
+
+        if not library_files:
+            messagebox.showinfo("No Library Configs", "No configs in the library. Import one first.")
+            return
+
+        # Simple selection dialog: ask user to type/paste the filename from the list
+        choice = simpledialog.askstring("Choose config", "Enter config filename:\n" + "\n".join(library_files), parent=self)
+        if not choice or choice not in library_files:
+            return
+
+        try:
+            # load from library and save into profile storage
+            content = self.manager.load_library_config(choice)
+            self.manager.save_config_file(name, choice, content)
+            p = self.manager.profiles[name]
+            if choice not in {c.config_filename for c in p.config_files}:
+                p.config_files.append(ProfileConfig(config_filename=choice))
+                self.manager.save_profile(p)
+            self._load_profile_configs()
+            self.app.set_status(f"Assigned '{choice}' to profile '{name}'", COLORS["positive"])
+        except Exception as ex:
+            messagebox.showerror("Assign failed", str(ex))
  
     def _set_borrow(self):
         name = self._profile_var.get()
