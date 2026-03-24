@@ -92,7 +92,7 @@ python main.py
 ## Data Storage
 All app data (profiles, library index, stored configs) lives in:
 - **Windows:** `%APPDATA%\Sims4ModManager`
-The settings panel shows the exact path below the green `Save Settings` button.
+   - The settings panel shows the exact path below the green `Save Settings` button.
 
 ---
 
