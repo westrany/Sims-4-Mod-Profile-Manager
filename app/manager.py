@@ -285,8 +285,13 @@ class ModManager:
         if name not in self.profiles:
             raise ValueError(f"Profile '{name}' not found.")
 
+        # Ensure Sims Mods folder exists
         self.sims_dir.mkdir(parents=True, exist_ok=True)
+
+        # Remove only symlinks previously created by another profile
         self._clear_sims_mods_symlinks()
+
+        # Clear logs left in the Mods folder (if option enabled in settings)
         if self.settings.clear_logs_on_switch:
             self._clear_sims_log_files()
 
@@ -294,12 +299,13 @@ class ModManager:
         linked = 0
         missing = []
 
+        # ── Symlink enabled mods ────────────────────────────────────────────────────────
         for rel_path in profile.enabled_mods:
             src = self.master_dir / rel_path
             if not src.exists():
                 missing.append(rel_path)
                 continue
-            # Flatten to Sims mods root (Sims supports one level of subfolder, but symlinks work from root)
+            # Flatten to Sims mods root
             link_name = Path(rel_path).name
             dest = self.sims_dir / link_name
             # Handle name collision from different subfolders
@@ -307,10 +313,15 @@ class ModManager:
                 stem = dest.stem
                 suffix = dest.suffix
                 dest = self.sims_dir / f"{stem}__{Path(rel_path).parent.name}{suffix}"
-            os.symlink(src.resolve(), dest)
-            linked += 1
+            # Create symlink to the master library file
+            try:
+                os.symlink(src.resolve(), dest)
+                linked += 1
+            except Exception:
+                # If symlink creation fails, continue; attempt to activate other mods/configs
+                missing.append(rel_path)
 
-        # Config files (copy-based swapping)
+        # ── Config files ──────────────────────────────────────────────────────────────────
         for cfg in profile.config_files:
             # Determine source: profile's own stored copy or borrow from another profile
             if cfg.source_profile:
@@ -327,26 +338,26 @@ class ModManager:
             if not cfg_src.exists():
                 # Nothing to copy for this config
                 continue
-                
+
             dest = self.sims_dir / cfg.config_filename
 
-            # Backup existing file in Sims mod folder (if any)
+            # Backup existing file in Sims Mods folder (if any)
             try:
                 if dest.exists() and not dest.is_symlink():
                     backup = self.sims_dir / (cfg.config_filename + ".backup")
                     shutil.copy2(dest, backup)
-                # Ensure any existhing dest (file or symlink) is removed before copying
+                # Ensure any existing dest (file or symlink) is removed before copying
                 if dest.exists() or dest.is_symlink():
                     dest.unlink()
             except Exception:
-                # Best-effort, continue even if backup/unlink fails
+                # Best-effort; continue even if backup/unlink fails
                 pass
 
             # Copy chosen source into the Sims Mods folder with the hardcoded filename
             try:
                 shutil.copy2(cfg_src, dest)
             except Exception:
-                # Ignore copy errors
+                # Ignore copy errors for now; activation will continue for other files
                 pass
 
         self.settings.active_profile = name
